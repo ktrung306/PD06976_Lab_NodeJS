@@ -3,7 +3,10 @@ var router = express.Router();
 
 //Thêm model
 const Distributors = require('../models/distributors')
-const Fruits =require('../models/fruits')
+const Fruits =require('../models/fruits');
+const Upload = require('../config/common/upload');
+const Users = require('../models/users');
+const Transporter = require('../config/common/mail');
 //Api thêm distributor
 router.post('/add-distributor', async (req, res) =>{
     try {
@@ -189,4 +192,171 @@ router.put('/update-fruit-by-id/:id', async (req, res) => {
         console.log(error);
     }
 });
+
+//delete fruit
+router.delete('/destroy-fruit-by-id/:id', async (req, res) => {
+    try {
+        const { id } = req.params
+        const result = await Fruits.findByIdAndDelete(id);
+        if (result) {
+            res.json({
+                "status": 200,
+                "messenger": "Xóa thành công",
+                "data": result
+            })
+        } else {
+            res.json({
+                "status": 400,
+                "messenger": "Lỗi! xóa không thành công",
+                "data": []
+            })
+        }
+    } catch (error) {
+        console.log(error);
+    }
+});
+
+//upload image
+router.post('/add-fruit-with-file-image', Upload.array('image', 5), async (req, res) => {
+    //Upload.array('image',5) => up nhiều file tối đa là 5
+    //upload.single('image') => up load 1 file
+    try {
+        const data = req.body; // Lấy dữ liệu từ body
+        const { files } = req //files nếu upload nhiều, file nếu upload 1 file
+        const urlsImage =
+            files.map((file) => `${req.protocol}://${req.get("host")}/uploads/${file.filename}`)
+        //url hình ảnh sẽ được lưu dưới dạng: http://localhost:3000/upload/filename
+        const newfruit = new Fruits({
+            name: data.name,
+            quantity: data.quantity,
+            price: data.price,
+            status: data.status,
+            image: urlsImage, /* Thêm url hình */
+            description: data.description,
+            id_distributor: data.id_distributor
+        }); //Tạo một đối tượng mới
+        const result = await newfruit.save(); //Thêm vào database
+        if (result) {// Nếu thêm thành công result !null trả về dữ liệu
+            res.json({
+                "status": 200,
+                "messenger": "Thêm thành công",
+                "data": result
+            })
+        } else {// Nếu thêm không thành công result null, thông báo không thành công
+            res.json({
+                "status": 400,
+                "messenger": "Lỗi, thêm không thành công",
+                "data": []
+            })
+        }
+    } catch (error) {
+        console.log(error);
+    }
+});
+
+////
+router.post('/register-send-email', Upload.single('avatar'), async (req, res) => {
+    try {
+        const data = req.body;
+        const { file } = req
+        const newUser = Users({
+            username: data.username,
+            password: data.password,
+            email: data.email,
+            name: data.name,
+            avatar: `${req.protocol}://${req.get("host")}/uploads/${file.filename}`,
+            //url avatar http://localhost:3000/uploads/filename
+        })
+        const result = await newUser.save()
+        if (result) { //Gửi mail
+            const mailOptions = {
+                from: "khactrungcc18@gmail.com", //email gửi đi
+                to: result.email, // email nhận
+                subject: "Đăng ký thành công", //subject
+                text: "Cảm ơn bạn đã đăng ký", // nội dung mail
+            };
+            // Nếu thêm thành công result !null trả về dữ liệu
+            await Transporter.sendMail(mailOptions); // gửi mail
+            res.json({
+                "status": 200,
+                "messenger": "Thêm thành công",
+                "data": result
+            })
+        } else {// Nếu thêm không thành công result null, thông báo không thành công
+            res.json({
+                "status": 400,
+                "messenger": "Lỗi, thêm không thành công",
+                "data": []
+            })
+        }
+    } catch (error) {
+        console.log(error);
+    }
+});
+
+////Đăng nhập
+const JWT = require('jsonwebtoken');
+const SECRETKEY = "FPTPOLYTECHNIC"
+router.post('/login',async (req,res)=>{
+    try {
+        const {username,password} = req.body;
+        const user = await Users.findOne({username,password})
+        if(user)
+        {   
+            //Token người dùng sẽ sử dụng gửi lên trên header mỗi lần muốn gọi api
+            const token = JWT.sign({id: user._id},SECRETKEY,{expiresIn: '1h'});
+            //Khi token hết hạn, người dùng sẽ call 1 api khác để lấy token mới
+            //Lúc này người dùng sẽ truyền refreshToken lên để nhận về 1 cặp token,refreshToken mới
+            //Nếu cả 2 token đều hết hạn người dùng sẽ phải thoát app và đăng nhập lại
+            const refreshToken = JWT.sign({id: user._id},SECRETKEY,{expiresIn: '1d'})
+            //expiresIn thời gian token
+            res.json({
+                "status" : 200,
+                "messenger" : "Đăng nhâp thành công",
+                "data" : user,
+                "token" : token,
+                "refreshToken" : refreshToken
+            })
+        }else
+        {
+            // Nếu thêm không thành công result null, thông báo không thành công
+            res.json({
+                "status" : 400 ,
+                "messenger" : "Lỗi, đăng nhập không thành công",
+                "data" : []
+            })
+        }
+    } catch (error) {
+        console.log(error);
+    }
+});
+
+router.get('/get-list-fruit', async(req,res,next) => {
+    const authHeader = req.headers['authorization']
+    //Authorization thêm từ khoá 'Bearer token'
+    //Nên sẽ xử lý cắt chuỗi
+    const token = authHeader && authHeader.split(' ')[1]
+    //Nếu không có token sẽ trả về 401
+    if(token == null) return res.sendStatus(401)
+    let payload;
+    JWT.verify(token, SECRETKEY, (err,_payload) => {
+        //Kiểm tra token, nếu token ko đúng, hoặc hết hạn
+        if(err instanceof JMT.TokenExpiredErroi) return res.sendStatus(401)
+        if(err) return res.sendStatus(403)
+        //Nếu đúng sẽ log ra dữ liệu
+        payload = _payload;
+    })
+    console.log(payload);
+    try {
+        const data = await Fruits.find().populate('id_distributor');
+        res.json({
+            "status": 200,
+            "messenger" : "Danh sách fruit",
+            "data" : data
+        })
+    } catch (error) {
+        console.log(error);
+    }
+});
+
 module.exports = router;
