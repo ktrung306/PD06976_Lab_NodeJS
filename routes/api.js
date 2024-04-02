@@ -7,7 +7,7 @@ const Fruits =require('../models/fruits');
 const Upload = require('../config/common/upload');
 const Users = require('../models/users');
 const Transporter = require('../config/common/mail');
-//Api thêm distributor
+// Lab 3_3.Api thêm distributor
 router.post('/add-distributor', async (req, res) =>{
     try {
         const data = req.body; // Lấy dữ liệu từ body
@@ -37,7 +37,7 @@ router.post('/add-distributor', async (req, res) =>{
     }
 });
 
-//Api thêm fruit
+//Lab 3_3.Api thêm fruit
 router.post('/add-fruit', async (req, res) => {
     try {
         const data = req.body; // Lấy dữ liệu từ body
@@ -73,7 +73,7 @@ router.post('/add-fruit', async (req, res) => {
     }
 });
 
-//Lấy danh sách
+//Lab3_4.Lấy danh sách
 router.get('/get-list-fruit', async (req, res) => {
     try {
         const data = await Fruits.find().populate('id_distributor');
@@ -87,7 +87,7 @@ router.get('/get-list-fruit', async (req, res) => {
     }
 });
 
-//Lấy dữ liệu Fruits thông qua id
+//Lab3_4.Lấy dữ liệu Fruits thông qua id
 router.get('/get-fruit-by-id/:id', async (req, res) => {
     //:id param
     try {
@@ -103,7 +103,7 @@ router.get('/get-fruit-by-id/:id', async (req, res) => {
     }
 });
 
-/*Lấy dữ liệu Fruits (danh sách trả về gồm: name, quantity, price, id_ditributor) nằm trong khoảng giá  
+/*Lab3_4.Lấy dữ liệu Fruits (danh sách trả về gồm: name, quantity, price, id_ditributor) nằm trong khoảng giá  
 (query giá cao nhất, giá thấp nhất) */ 
 router.get('/get-list-fruit-in-price', async(req, res) => {
     //:id param
@@ -129,7 +129,7 @@ router.get('/get-list-fruit-in-price', async(req, res) => {
     }
 });
 
-//Lấy dữ liệu Fruits cái bắt đầu tên là A hoặc X 
+//Lab3_4.Lấy dữ liệu Fruits cái bắt đầu tên là A hoặc X 
 router.get('/get-list-fruit-have-name-a-or-x', async (req, res) => {
     //:id param
     try {
@@ -150,7 +150,7 @@ router.get('/get-list-fruit-have-name-a-or-x', async (req, res) => {
     }
 });
 
-//CẬP NHẬT FRUITS BẰNG ID (PUT)
+//Lab3_5.CẬP NHẬT FRUITS BẰNG ID (PUT)
 router.put('/update-fruit-by-id/:id', async (req, res) => {
     try {
         const {id} = req.params
@@ -193,7 +193,7 @@ router.put('/update-fruit-by-id/:id', async (req, res) => {
     }
 });
 
-//delete fruit
+//Lab4_1.delete fruit
 router.delete('/destroy-fruit-by-id/:id', async (req, res) => {
     try {
         const { id } = req.params
@@ -216,7 +216,7 @@ router.delete('/destroy-fruit-by-id/:id', async (req, res) => {
     }
 });
 
-//upload image
+//Lab4_2.upload image
 router.post('/add-fruit-with-file-image', Upload.array('image', 5), async (req, res) => {
     //Upload.array('image',5) => up nhiều file tối đa là 5
     //upload.single('image') => up load 1 file
@@ -254,7 +254,7 @@ router.post('/add-fruit-with-file-image', Upload.array('image', 5), async (req, 
     }
 });
 
-////
+//Lab4_3.register-send-email
 router.post('/register-send-email', Upload.single('avatar'), async (req, res) => {
     try {
         const data = req.body;
@@ -294,7 +294,7 @@ router.post('/register-send-email', Upload.single('avatar'), async (req, res) =>
     }
 });
 
-////Đăng nhập
+//Lab4_4.Đăng nhập
 const JWT = require('jsonwebtoken');
 const SECRETKEY = "FPTPOLYTECHNIC"
 router.post('/login',async (req,res)=>{
@@ -331,6 +331,7 @@ router.post('/login',async (req,res)=>{
     }
 });
 
+//Lab4_4.get-list-fruit
 router.get('/get-list-fruit', async(req,res,next) => {
     const authHeader = req.headers['authorization']
     //Authorization thêm từ khoá 'Bearer token'
@@ -359,4 +360,184 @@ router.get('/get-list-fruit', async(req,res,next) => {
     }
 });
 
+//Lab5_1.Viết API 
+router.get('/get-list-distributor', async(req,res) => {
+    try {
+        //Lấy danh sách theo thứ tự distributor mới nhất 
+        const data = await Distributors.find().sort({createdAt: -1});
+        if(data)
+        {
+            //Trả về danh sách
+            res.json({
+                "status": 200,
+                "messenger": "Thành công",
+                "data": data
+            })
+        }else
+        {
+            //Nếu thêm không thành công result null, thông báo không thành công
+            res.json({
+                "status" : 400,
+                "messenger": "Lỗi, không thành công",
+                "data": []
+            })
+        }
+    } catch (error) {
+        console.log(error);
+    }
+});
+///
+router.get('/search-distributor', async(req, res) => {
+    try {
+        const key = req.query.key; //Nhận từ query
+        //Lấy danh sách theo thứ tự distributors mới nhất
+        const data = await Distributors.find({name: {"$regex": key, "$options": "i"}})
+                                        .sort({createdAt: -1});
+        if(data)
+        {
+            //Trả về danh sách
+            res.json({
+                "status": 200,
+                "messenger" : "Thành công",
+                "data": data
+            })
+        }else 
+        {
+            //Nếu thêm không thành công result null, thông báo không thành công
+            res.json({
+                "status": 400,
+                "messenger": "Lỗi, thành công",
+                "data": []
+            })
+        } 
+    } catch (error) {
+        console.log(error);
+    }
+});
+///
+router.delete('/delete-distributor-by-id/:id', async(req, res) =>{
+    try {
+        const {id} = req.params
+        const result = await Distributors.findByIdAndDelete(id);
+        if(result)
+        {
+            //Nếu xoá thành công sẽ trả về thông item đã xoá
+            res.json({
+                "status" : 200,
+                "messenger" : "Xoá thành công",
+                "data" : result 
+            })
+        }else
+        {
+            res.json({
+                "status": 400,
+                "messenger": "Lỗi, Xoá không thành công",
+                "data": []
+            })
+        }
+    } catch (error) {
+        console.log(error);
+    }
+});
+///
+router.put('/update-distributor-by-id/:id', async(req, res) =>{
+    try {
+        const {id} = req.params
+        const data = req.body;
+        const result = await Distributors.findByIdAndUpdate(id,{name : data.name})
+        if(result)
+        {
+            //Nếu thêm thành công result !null trả về dữ liệu
+            res.json({
+                "status" : 200,
+                "messenger" : "Cập nhật thành công",
+                "data" : result
+            })
+        }else
+        {
+            //Nếu thêm không thành công result null, thông báo không thành công
+            res.json({
+                "status" : 400,
+                "messenger" : "Lỗi, Cập nhật không thành công",
+                "data" : null
+            })
+        }
+    } catch (error) {
+        console.log(error);
+    }
+});
+
+///Lab 6
+router.post('/add-fruit-with-file-image', Upload.array('image', 5), async(req, res) => {
+    //Upload.array('image', 5) => up nhiều file tối đa là 5
+    //Upload.single('image') => up load 1 file
+    try {
+        const data = req.body //Lấy dữ liệu từ body
+        const {files} = req //Lấy files nếu upload nhiều, file nếu 1
+        const urlsImage = files.map((file) => `${req.protocol}://${req.get("host")}/uploads/${file.filename}`)
+        const newfruit = new Fruits({
+            name: data.name,
+            quantity: data.quantity,
+            price: data.price,
+            status: data.status,
+            image: urlsImage, /*Thêm cả url hình */
+            description: data.description,
+            id_distributor: data.id_distributor
+        }); //Tạo một đối tượng mới 
+        const result = (await newfruit.save()).populate("id_distributor"); // Thêm vào database
+        if(result)
+        {
+            //Nếu thêm thành công result !null trả về dữ liệu 
+            res.json({
+                "status": 200,
+                "messenger": "Thêm thành công",
+                "data": result
+            })
+        }else
+        {
+            res.json({
+                "status": 400,
+                "messenger": "Lỗi, thêm không thành công",
+                "data": []
+            })
+        }
+    } catch (error) {
+        console.log(error);
+    }
+});
+
+//Lab7_1
+router.get('/get-page-fruit', async (req, res) => {
+    //Auten
+    const authHeader = req.headers['authorization']
+    const token = authHeader && authHeader.split(' ')[1]
+    if (token == null) return res.sendStatus(401)
+    let payload;
+JWT.verify(token, SECRETKEY , (err, _payload) => {
+    if(err instanceof JWT.TokenExpiredError) return res.sendStatus(401)
+    if(err) return res.sendStatus(403)
+    payload = _payload;
+})
+let perPage = 2; //Số lượng sản phẩm xuất hiện trên 1 pape
+let pape = req.query.pape || 1; //Page truyền lên
+let skip = (perPage * pape) - perPage; //Phân trang
+let count = await Fruits.find().count(); //Lấy tổng số phần tử
+try {
+    const data = await Fruits.find()
+                            .populate('id_distributor')
+                            .skip(skip)
+                            .limit(perPage)
+    res.json({
+        "status" : 200,
+        "messenger" : "Danh sách fruit",
+        "data" : {
+            "data" : data,
+            "currentPage" : Number(pape),
+            "totalPage" : Math.ceil(count/perPage)
+        }
+    })
+} catch (error) {
+    console.log(error);
+}
+})
 module.exports = router;
