@@ -506,38 +506,50 @@ router.post('/add-fruit-with-file-image', Upload.array('image', 5), async(req, r
     }
 });
 
-//Lab7_1
+//lab 7
+//load more
 router.get('/get-page-fruit', async (req, res) => {
     //Auten
-    const authHeader = req.headers['authorization']
-    const token = authHeader && authHeader.split(' ')[1]
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
     if (token == null) return res.sendStatus(401)
     let payload;
-JWT.verify(token, SECRETKEY , (err, _payload) => {
-    if(err instanceof JWT.TokenExpiredError) return res.sendStatus(401)
-    if(err) return res.sendStatus(403)
-    payload = _payload;
-})
-let perPage = 2; //Số lượng sản phẩm xuất hiện trên 1 pape
-let pape = req.query.pape || 1; //Page truyền lên
-let skip = (perPage * pape) - perPage; //Phân trang
-let count = await Fruits.find().count(); //Lấy tổng số phần tử
-try {
-    const data = await Fruits.find()
-                            .populate('id_distributor')
-                            .skip(skip)
-                            .limit(perPage)
-    res.json({
-        "status" : 200,
-        "messenger" : "Danh sách fruit",
-        "data" : {
-            "data" : data,
-            "currentPage" : Number(pape),
-            "totalPage" : Math.ceil(count/perPage)
-        }
+    JWT.verify(token, SECRETKEY, (err, _payLoad) => {
+        if (err instanceof JWT.TokenExpiredError) return res.sendStatus(401)
+        if (err) return res.sendStatus(403)
+        payload = _payLoad
     })
-} catch (error) {
-    console.log(error);
-}
+    let perPage = 6;
+    let page = req.query.page || 1;
+    let skip = (perPage * page) - perPage;
+    let count = await Fruits.find().count();
+    const name = { "$regex": req.query.name ?? "", "$options": "i" }
+
+    const price = { $gte: req.query.price ?? 0 }
+    console.log(222, typeof (req.query.sort));
+
+    const sort = { price: Number(req.query.sort) ?? 1 }
+    try {
+        console.log(1111111, name + "price" + req.query.sort);
+        const data = await Fruits.find({ name: name, price: price })
+            .populate('id_distributor')
+            .sort(sort)
+            .skip(skip)
+            .limit(perPage)
+        res.json({
+            "status": 200,
+            "messenger": "Danh sách fruit",
+            "data": {
+                "data": data,
+                "currentPage": Number(page),
+                "totalPage": Math.ceil(count / perPage)
+            }
+        }
+        )
+
+    } catch (err) {
+        console.log(err);
+
+    }
 })
 module.exports = router;
